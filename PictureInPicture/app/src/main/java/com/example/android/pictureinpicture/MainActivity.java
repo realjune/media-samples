@@ -16,23 +16,13 @@
 
 package com.example.android.pictureinpicture;
 
-import android.app.PendingIntent;
-import android.app.PictureInPictureParams;
-import android.app.RemoteAction;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.Configuration;
-import android.graphics.drawable.Icon;
-import android.net.Uri;
 import android.os.Bundle;
-import android.util.Rational;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 
-import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
@@ -41,54 +31,14 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.example.android.pictureinpicture.widget.MovieView;
 
-import java.util.ArrayList;
+import wu.a.pip.PipWrap;
 
 /**
  * Demonstrates usage of Picture-in-Picture mode on phones and tablets.
  */
 public class MainActivity extends AppCompatActivity {
 
-    /**
-     * Intent action for media controls from Picture-in-Picture mode.
-     */
-    private static final String ACTION_MEDIA_CONTROL = "media_control";
-
-    /**
-     * Intent extra for media controls from Picture-in-Picture mode.
-     */
-    private static final String EXTRA_CONTROL_TYPE = "control_type";
-
-    /**
-     * The request code for play action PendingIntent.
-     */
-    private static final int REQUEST_PLAY = 1;
-
-    /**
-     * The request code for pause action PendingIntent.
-     */
-    private static final int REQUEST_PAUSE = 2;
-
-    /**
-     * The request code for info action PendingIntent.
-     */
-    private static final int REQUEST_INFO = 3;
-
-    /**
-     * The intent extra value for play action.
-     */
-    private static final int CONTROL_TYPE_PLAY = 1;
-
-    /**
-     * The intent extra value for pause action.
-     */
-    private static final int CONTROL_TYPE_PAUSE = 2;
-
-    /**
-     * The arguments to be used for Picture-in-Picture mode.
-     */
-    private final PictureInPictureParams.Builder mPictureInPictureParamsBuilder =
-            new PictureInPictureParams.Builder();
-
+    private PipWrap mPipUtils;
     /**
      * This shows the video.
      */
@@ -98,14 +48,6 @@ public class MainActivity extends AppCompatActivity {
      * The bottom half of the screen; hidden on landscape
      */
     private ScrollView mScrollView;
-
-    /**
-     * A {@link BroadcastReceiver} to receive action item events from Picture-in-Picture mode.
-     */
-    private BroadcastReceiver mReceiver;
-
-    private String mPlay;
-    private String mPause;
 
     private final View.OnClickListener mOnClickListener = view -> {
         if (view.getId() == R.id.pip) {
@@ -122,16 +64,14 @@ public class MainActivity extends AppCompatActivity {
         public void onMovieStarted() {
             // We are playing the video now. In PiP mode, we want to show an action item to
             // pause the video.
-            updatePictureInPictureActions(
-                    R.drawable.ic_pause_24dp, mPause, CONTROL_TYPE_PAUSE, REQUEST_PAUSE);
+            mPipUtils.updatePlayBtn(true);
         }
 
         @Override
         public void onMovieStopped() {
             // The video stopped or reached its end. In PiP mode, we want to show an action
             // item to play the video.
-            updatePictureInPictureActions(
-                    R.drawable.ic_play_arrow_24dp, mPlay, CONTROL_TYPE_PLAY, REQUEST_PLAY);
+            mPipUtils.updatePlayBtn(false);
         }
 
         @Override
@@ -141,63 +81,12 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    /**
-     * Update the state of pause/resume action item in Picture-in-Picture mode.
-     *
-     * @param iconId      The icon to be used.
-     * @param title       The title text.
-     * @param controlType The type of the action. either {@link #CONTROL_TYPE_PLAY} or {@link
-     *                    #CONTROL_TYPE_PAUSE}.
-     * @param requestCode The request code for the {@link PendingIntent}.
-     */
-    void updatePictureInPictureActions(
-            @DrawableRes int iconId, String title, int controlType, int requestCode
-    ) {
-        final ArrayList<RemoteAction> actions = new ArrayList<>();
-
-        // This is the PendingIntent that is invoked when a user clicks on the action item.
-        // You need to use distinct request codes for play and pause, or the PendingIntent won't
-        // be properly updated.
-        final PendingIntent intent =
-                PendingIntent.getBroadcast(
-                        MainActivity.this,
-                        requestCode,
-                        new Intent(ACTION_MEDIA_CONTROL).putExtra(EXTRA_CONTROL_TYPE, controlType),
-                        0);
-        final Icon icon = Icon.createWithResource(MainActivity.this, iconId);
-        actions.add(new RemoteAction(icon, title, title, intent));
-
-        // Another action item. This is a fixed action.
-        actions.add(
-                new RemoteAction(
-                        Icon.createWithResource(MainActivity.this, R.drawable.ic_info_24dp),
-                        getString(R.string.info),
-                        getString(R.string.info_description),
-                        PendingIntent.getActivity(
-                                MainActivity.this,
-                                REQUEST_INFO,
-                                new Intent(
-                                        Intent.ACTION_VIEW,
-                                        Uri.parse(getString(R.string.info_uri))),
-                                0)));
-
-        mPictureInPictureParamsBuilder.setActions(actions);
-
-        // This is how you can update action items (or aspect ratio) for Picture-in-Picture mode.
-        // Note this call can happen even when the app is not in PiP mode. In that case, the
-        // arguments will be used for at the next call of #enterPictureInPictureMode.
-        setPictureInPictureParams(mPictureInPictureParamsBuilder.build());
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         // Prepare string resources for Picture-in-Picture actions.
-        mPlay = getString(R.string.play);
-        mPause = getString(R.string.pause);
-
         // View references
         mMovieView = findViewById(R.id.movie);
         mScrollView = findViewById(R.id.scroll);
@@ -209,6 +98,30 @@ public class MainActivity extends AppCompatActivity {
         // Set up the video; it automatically starts.
         mMovieView.setMovieListener(mMovieListener);
         findViewById(R.id.pip).setOnClickListener(mOnClickListener);
+        initPip();
+    }
+
+    private void initPip() {
+        mPipUtils = new PipWrap(this);
+        mPipUtils.setOnPipListener(new PipWrap.OnPipListener() {
+            @Override
+            public void onPlayAction() {
+                mMovieView.play();
+            }
+
+            @Override
+            public void onPauseAction() {
+                mMovieView.pause();
+            }
+
+            @Override
+            public void onExitPip() {
+// Show the video controls if the video is not playing
+                if (mMovieView != null && !mMovieView.isPlaying()) {
+                    mMovieView.showControls();
+                }
+            }
+        });
     }
 
     @Override
@@ -246,40 +159,7 @@ public class MainActivity extends AppCompatActivity {
     public void onPictureInPictureModeChanged(
             boolean isInPictureInPictureMode, Configuration configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, configuration);
-        if (isInPictureInPictureMode) {
-            // Starts receiving events from action items in PiP mode.
-            mReceiver =
-                    new BroadcastReceiver() {
-                        @Override
-                        public void onReceive(Context context, Intent intent) {
-                            if (intent == null
-                                    || !ACTION_MEDIA_CONTROL.equals(intent.getAction())) {
-                                return;
-                            }
-
-                            // This is where we are called back from Picture-in-Picture action
-                            // items.
-                            final int controlType = intent.getIntExtra(EXTRA_CONTROL_TYPE, 0);
-                            switch (controlType) {
-                                case CONTROL_TYPE_PLAY:
-                                    mMovieView.play();
-                                    break;
-                                case CONTROL_TYPE_PAUSE:
-                                    mMovieView.pause();
-                                    break;
-                            }
-                        }
-                    };
-            registerReceiver(mReceiver, new IntentFilter(ACTION_MEDIA_CONTROL));
-        } else {
-            // We are out of PiP mode. We can stop receiving events from it.
-            unregisterReceiver(mReceiver);
-            mReceiver = null;
-            // Show the video controls if the video is not playing
-            if (mMovieView != null && !mMovieView.isPlaying()) {
-                mMovieView.showControls();
-            }
-        }
+        mPipUtils.onPictureInPictureModeChanged(this, isInPictureInPictureMode, configuration);
     }
 
     /**
@@ -291,10 +171,7 @@ public class MainActivity extends AppCompatActivity {
         }
         // Hide the controls in picture-in-picture mode.
         mMovieView.hideControls();
-        // Calculate the aspect ratio of the PiP screen.
-        Rational aspectRatio = new Rational(mMovieView.getWidth(), mMovieView.getHeight());
-        mPictureInPictureParamsBuilder.setAspectRatio(aspectRatio).build();
-        enterPictureInPictureMode(mPictureInPictureParamsBuilder.build());
+        mPipUtils.enterPipMode(this, mMovieView.getWidth(), mMovieView.getHeight());
     }
 
     /**

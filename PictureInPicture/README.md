@@ -71,3 +71,11 @@ https://github.com/android/media
 
 Patches are encouraged, and may be submitted by forking this project and
 submitting a pull request through GitHub. Please see CONTRIBUTING.md for more details.
+
+修改
+-------
+PipWrap: pip的逻辑封装类，简化Activity代码。
+DashActivity : 入口页面
+MainActivity: 带播放器支持pip的页面
+NormalActivity：普通不支持pip的页面
+
