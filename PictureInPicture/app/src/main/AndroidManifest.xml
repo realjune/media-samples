@@ -16,6 +16,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.android.pictureinpicture">
 
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -26,19 +28,23 @@
         <activity
             android:name=".MainActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
-            android:supportsPictureInPicture="true">
-        </activity>
+            android:supportsPictureInPicture="true"></activity>
         <activity
             android:name=".MediaSessionPlaybackActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:supportsPictureInPicture="true" />
         <activity android:name=".NormalActivity" />
-        <activity android:name=".DashActivity" >
+        <activity android:name=".DashActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".ToFloatingActivity" />
+
+        <service
+            android:name="wu.a.floating.FloatingViewService"
+            android:enabled="true" />
 
     </application>
 

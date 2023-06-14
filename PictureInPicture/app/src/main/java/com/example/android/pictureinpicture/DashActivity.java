@@ -32,5 +32,12 @@ public class DashActivity extends AppCompatActivity {
                 startActivity(i);
             }
         });
+        findViewById(R.id.floating_btn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent i = new Intent(DashActivity.this, ToFloatingActivity.class);
+                startActivity(i);
+            }
+        });
     }
 }
